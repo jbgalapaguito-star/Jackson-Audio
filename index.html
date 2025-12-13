@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jackson Audio</title>
+    <link rel="manifest" href="/manifest.json" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      .animate-spin-slow {
+        animation: spin 3s linear infinite;
+      }
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      /* Custom scrollbar for better aesthetics in split view */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f5f9; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8; 
+      }
+
+      /* Print styles - Global Reset */
+      @media print {
+        @page {
+          margin: 1cm;
+          size: auto;
+        }
+        
+        body {
+          background: white !important;
+          color: black !important;
+        }
+
+        /* Reset all layout containers to allow full scrolling/printing */
+        body, #root, #root > div, main {
+          display: block !important;
+          height: auto !important;
+          width: 100% !important;
+          overflow: visible !important;
+          position: static !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        /* Override Tailwind height/overflow utilities that clip content */
+        .h-screen { height: auto !important; min-height: 0 !important; }
+        .overflow-hidden { overflow: visible !important; }
+        .overflow-y-auto { overflow: visible !important; }
+        
+        /* Hide UI elements */
+        aside, header, .no-print, button {
+          display: none !important;
+        }
+
+        /* Specific fix for main container */
+        main > div {
+           max-width: none !important;
+           margin: 0 !important;
+           padding: 0 !important;
+        }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-slate-50 text-slate-900 antialiased min-h-screen overflow-hidden">
+    <div id="root"></div>
+  </body>
+</html>

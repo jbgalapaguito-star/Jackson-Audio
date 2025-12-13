@@ -1,0 +1,20 @@
+{
+  "name": "Jackson Audio",
+  "short_name": "JacksonAudio",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "https://i.ibb.co/3sN62k4/Jackson-Legend.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.ibb.co/3sN62k4/Jackson-Legend.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
