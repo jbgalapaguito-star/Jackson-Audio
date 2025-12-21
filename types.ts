@@ -14,6 +14,7 @@ export interface AnalysisResult {
   development: string; // "Desarrollo"
   commitments: Commitment[];
   nextMeeting: string;
+  fullTranscription: string; // New field for full text
 }
 
 export enum AppStatus {

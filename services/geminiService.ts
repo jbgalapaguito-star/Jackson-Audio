@@ -4,8 +4,7 @@ import { AnalysisResult } from "../types";
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
- * Converts a File object to a Base64 string suitable for the Gemini API (Inline).
- * Used for smaller files to reduce latency.
+ * Convierte un archivo a Base64 para envío inline (archivos menores a 20MB).
  */
 const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: string; mimeType: string } }> => {
   return new Promise((resolve, reject) => {
@@ -26,13 +25,10 @@ const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: s
 };
 
 /**
- * Uploads a large file to Gemini Files API and waits for it to be processed.
+ * Sube archivos grandes a Gemini Files API.
  */
-const uploadLargeFile = async (file: File): Promise<{ fileData: { fileUri: string; mimeType: string } }> => {
-  console.log("Iniciando carga de archivo grande a Gemini Files API...");
-  
-  // 1. Upload the file
-  // Note: The SDK returns the 'file' object directly in the response
+const uploadLargeFile = async (file: File) => {
+  console.log("Cargando archivo pesado a Gemini Files API...");
   const uploadResponse = await ai.files.upload({
     file: file,
     config: { 
@@ -42,78 +38,53 @@ const uploadLargeFile = async (file: File): Promise<{ fileData: { fileUri: strin
   });
 
   const fileName = uploadResponse.name;
-  console.log(`Archivo subido: ${fileName}. Esperando procesamiento...`);
-
-  // 2. Poll until the file is active
   let fileInfo = await ai.files.get({ name: fileName });
   let attempts = 0;
   
-  // Note: The SDK returns the 'file' object directly
   while (fileInfo.state === 'PROCESSING') {
     attempts++;
-    if (attempts > 60) { // Timeout after ~2 minutes
-        throw new Error("El procesamiento del archivo tardó demasiado tiempo.");
-    }
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+    if (attempts > 60) throw new Error("Tiempo de espera agotado en el procesamiento.");
+    await new Promise(resolve => setTimeout(resolve, 2000));
     fileInfo = await ai.files.get({ name: fileName });
-    console.log(`Estado del archivo: ${fileInfo.state}`);
   }
 
-  if (fileInfo.state === 'FAILED') {
-    throw new Error("El procesamiento del audio falló en los servidores de Google.");
-  }
-
-  return {
-    fileData: {
-      fileUri: fileInfo.uri,
-      mimeType: fileInfo.mimeType
-    }
-  };
+  if (fileInfo.state === 'FAILED') throw new Error("Error en el procesamiento del servidor.");
+  return fileInfo;
 };
 
-/**
- * Analyzes the audio file using Gemini Flash.
- * Automatically switches strategy based on file size.
- */
 export const analyzeAudioFile = async (file: File): Promise<AnalysisResult> => {
   try {
-    const INLINE_LIMIT_BYTES = 20 * 1024 * 1024; // 20MB
+    const INLINE_LIMIT = 20 * 1024 * 1024;
     let audioPart;
 
-    // Strategy selection: Inline for speed on small files, Files API for heavy lifting
-    if (file.size < INLINE_LIMIT_BYTES) {
-      console.log("Modo: Inline (Archivo pequeño)");
+    if (file.size < INLINE_LIMIT) {
       audioPart = await fileToGenerativePart(file);
     } else {
-      console.log("Modo: Files API (Archivo grande)");
-      audioPart = await uploadLargeFile(file);
+      const fileData = await uploadLargeFile(file);
+      audioPart = {
+        fileData: {
+          fileUri: fileData.uri,
+          mimeType: fileData.mimeType
+        }
+      };
     }
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: {
         parts: [
           audioPart,
           {
-            text: `Actúa como un secretario experto redactando un Acta de Reunión formal basada en este audio.
+            text: `Eres un secretario ejecutivo experto en transcripción y redacción de actas. Tu tarea es:
             
-            Necesito extraer la información para llenar un formato de acta específico. Extrae los siguientes campos en español:
-            
-            1. **Participantes (Asistentes):** Lista de nombres detectados.
-            2. **Datos de la reunión:** 
-               - Fecha (si se menciona, sino "Por definir").
-               - Hora (si se menciona, sino "Por definir").
-               - Lugar (si se menciona, sino "Reunión Virtual").
-            3. **Objetivo General:** El propósito principal de la reunión.
-            4. **Antecedentes:** Contexto previo o temas revisados al inicio.
-            5. **Desarrollo:** Un resumen detallado de la discusión principal.
-            6. **Compromisos (Resoluciones):** Una lista estructurada de acuerdos. Para cada uno identifica:
-               - Resolución (Qué se acordó).
-               - Responsable (Quién lo hará).
-               - Fecha límite (Cuándo).
-            7. **Próxima Reunión:** Fecha tentativa o detalles si se mencionan.
+            1. **ACTA FORMAL**: Genera un acta detallada (Participantes, Objetivo, Antecedentes, Desarrollo y Compromisos).
+            2. **TRANSCRIPCIÓN COMPLETA POR PÁRRAFOS**: Proporciona el texto íntegro de la grabación organizado estrictamente por intervenciones. 
+               - Cada párrafo debe comenzar con el nombre del hablante (o "HABLANTE X" si es desconocido) en mayúsculas, seguido de dos puntos.
+               - Ejemplo: "JUAN PÉREZ: Buenos días a todos, comenzamos la sesión..."
+               - Usa saltos de línea dobles entre cada cambio de hablante para que la estructura sea clara.
+               - No omitas ninguna parte del discurso, debe ser literal.
 
-            Asegúrate de ser preciso y formal. Si no se menciona algún dato específico, infiérelo del contexto o usa "No especificado".`
+            Idioma: Español. Responde estrictamente en formato JSON.`
           }
         ]
       },
@@ -122,47 +93,36 @@ export const analyzeAudioFile = async (file: File): Promise<AnalysisResult> => {
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            participants: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-              description: "Lista de nombres de los asistentes.",
-            },
-            meetingDate: { type: Type.STRING, description: "Fecha de la reunión (DD/MM/AAAA) o texto." },
-            meetingTime: { type: Type.STRING, description: "Hora de la reunión." },
-            meetingLocation: { type: Type.STRING, description: "Lugar o medio de la reunión." },
-            generalObjective: { type: Type.STRING, description: "Objetivo general de la sesión." },
-            background: { type: Type.STRING, description: "Antecedentes o contexto previo." },
-            development: { type: Type.STRING, description: "Resumen del desarrollo de la reunión." },
+            participants: { type: Type.ARRAY, items: { type: Type.STRING } },
+            meetingDate: { type: Type.STRING },
+            meetingTime: { type: Type.STRING },
+            meetingLocation: { type: Type.STRING },
+            generalObjective: { type: Type.STRING },
+            background: { type: Type.STRING },
+            development: { type: Type.STRING },
             commitments: {
               type: Type.ARRAY,
-              description: "Lista de compromisos/acuerdos.",
               items: {
                 type: Type.OBJECT,
                 properties: {
-                  resolution: { type: Type.STRING, description: "Descripción del acuerdo o tarea." },
-                  responsible: { type: Type.STRING, description: "Persona responsable." },
-                  date: { type: Type.STRING, description: "Fecha de cumplimiento." }
+                  resolution: { type: Type.STRING },
+                  responsible: { type: Type.STRING },
+                  date: { type: Type.STRING }
                 },
                 required: ["resolution", "responsible", "date"]
               }
             },
-            nextMeeting: { type: Type.STRING, description: "Detalles sobre la próxima reunión." }
+            nextMeeting: { type: Type.STRING },
+            fullTranscription: { type: Type.STRING, description: "Transcripción literal organizada por párrafos con identificación de hablante." }
           },
-          required: ["participants", "meetingDate", "meetingTime", "meetingLocation", "generalObjective", "background", "development", "commitments", "nextMeeting"],
+          required: ["participants", "meetingDate", "meetingTime", "meetingLocation", "generalObjective", "background", "development", "commitments", "nextMeeting", "fullTranscription"],
         },
       },
     });
 
-    const text = response.text;
-    if (!text) {
-      throw new Error("No response text received from Gemini.");
-    }
-
-    const data = JSON.parse(text) as AnalysisResult;
-    return data;
-
+    return JSON.parse(response.text) as AnalysisResult;
   } catch (error) {
-    console.error("Error analyzing audio:", error);
+    console.error("Error:", error);
     throw error;
   }
 };
