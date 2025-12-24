@@ -24,7 +24,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data }) => {
   };
 
   // Función para formatear la transcripción y resaltar hablantes
-  const formatTranscription = (text: string) => {
+  const formatTranscription = (text: string, isPrint = false) => {
     return text.split('\n').map((line, i) => {
       if (!line.trim()) return <br key={i} />;
       
@@ -33,16 +33,16 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data }) => {
         const speaker = line.substring(0, speakerEndIndex);
         const content = line.substring(speakerEndIndex + 1);
         return (
-          <p key={i} className="mb-4 border-l-2 border-slate-700 pl-4 py-1 hover:border-yellow-500 transition-colors">
-            <span className="font-black text-white bg-slate-800 px-2 py-0.5 rounded mr-2 text-[10px] uppercase tracking-tighter">
+          <p key={i} className={`mb-4 border-l-2 pl-4 py-1 transition-colors ${isPrint ? 'border-slate-800' : 'border-slate-700 hover:border-yellow-500'}`}>
+            <span className={`font-black px-2 py-0.5 rounded mr-2 text-[10px] uppercase tracking-tighter ${isPrint ? 'bg-slate-200 text-slate-900 border border-slate-300' : 'text-white bg-slate-800'}`}>
               {speaker}
             </span>
-            <span className="text-slate-300">{content}</span>
+            <span className={isPrint ? 'text-slate-800' : 'text-slate-300'}>{content}</span>
           </p>
         );
       }
       
-      return <p key={i} className="mb-4 text-slate-400">{line}</p>;
+      return <p key={i} className={`mb-4 ${isPrint ? 'text-slate-700' : 'text-slate-400'}`}>{line}</p>;
     });
   };
 
@@ -141,7 +141,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data }) => {
         </section>
       </div>
 
-      {/* Transcripción Detallada */}
+      {/* Transcripción Detallada - Versión Pantalla (Acordeón) */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden no-print">
          <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50">
             <div className="flex items-center gap-3">
@@ -177,6 +177,14 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data }) => {
               </div>
            </div>
          )}
+      </div>
+
+      {/* Transcripción - Versión Impresa (Siempre visible) */}
+      <div className="hidden print:block pt-10 border-t border-slate-300">
+        <h2 className="text-xl font-bold uppercase mb-6 pb-2 border-b-2 border-slate-900">Transcripción Íntegra de la Sesión</h2>
+        <div className="bg-white font-mono text-xs leading-relaxed">
+           {formatTranscription(data.fullTranscription, true)}
+        </div>
       </div>
     </div>
   );

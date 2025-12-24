@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { UploadCloud, FileAudio, AlertCircle } from 'lucide-react';
+import { UploadCloud, FileAudio, FileVideo, AlertCircle } from 'lucide-react';
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void;
@@ -7,7 +7,7 @@ interface FileUploadProps {
   compact?: boolean;
 }
 
-const MAX_SIZE_MB = 500; // Increased limit for Files API support
+const MAX_SIZE_MB = 2000; // 2GB es el límite de la API de archivos de Gemini
 
 export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, disabled, compact }) => {
   const [dragActive, setDragActive] = useState(false);
@@ -25,8 +25,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, disabled, 
 
   const validateAndPassFile = (file: File) => {
     setError(null);
-    if (!file.type.startsWith('audio/')) {
-      setError("Por favor sube un archivo de audio válido (MP3, WAV, M4A, etc).");
+    const isAudio = file.type.startsWith('audio/');
+    const isVideo = file.type.startsWith('video/');
+
+    if (!isAudio && !isVideo) {
+      setError("Por favor sube un archivo válido de audio (MP3, WAV) o video (MP4, MOV).");
       return;
     }
     if (file.size > MAX_SIZE_MB * 1024 * 1024) {
@@ -43,7 +46,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, disabled, 
     if (e.dataTransfer.files && e.dataTransfer.files[0] && !disabled) {
       validateAndPassFile(e.dataTransfer.files[0]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disabled, onFileSelect]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,7 +59,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, disabled, 
     <div className="w-full h-full flex flex-col">
       <div
         className={`relative flex flex-col items-center justify-center w-full border-2 border-dashed rounded-xl transition-all duration-300 ease-in-out flex-grow min-h-[250px]
-          ${dragActive ? "border-indigo-500 bg-indigo-50 scale-[1.01]" : "border-slate-300 bg-white hover:bg-slate-50"}
+          ${dragActive ? "border-yellow-500 bg-yellow-50 scale-[1.01]" : "border-slate-300 bg-white hover:bg-slate-50"}
           ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
         `}
         onDragEnter={handleDrag}
@@ -70,21 +72,23 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, disabled, 
           type="file"
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
           onChange={handleChange}
-          accept="audio/*"
+          accept="audio/*,video/*"
           disabled={disabled}
         />
         
         <div className="flex flex-col items-center justify-center p-6 text-center z-0">
-          <div className={`p-4 rounded-full mb-4 shadow-sm ${dragActive ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
-            {dragActive ? <UploadCloud size={32} /> : <FileAudio size={32} />}
+          <div className={`flex gap-3 p-4 rounded-full mb-4 shadow-sm ${dragActive ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-100 text-slate-500'}`}>
+            <FileAudio size={28} />
+            <div className="w-px h-6 bg-slate-300 self-center"></div>
+            <FileVideo size={28} />
           </div>
           <p className="mb-2 text-lg font-semibold text-slate-800">
-            {dragActive ? "Suelta el audio" : "Subir Audio"}
+            {dragActive ? "Suelta el archivo" : "Subir Audio o Video"}
           </p>
           <p className="text-xs text-slate-500 mb-4 px-4 leading-relaxed">
             Arrastra o haz clic para buscar. <br/>
-            Soporta MP3, WAV, M4A.<br/>
-            <span className="font-medium text-slate-600">Máx {MAX_SIZE_MB}MB</span>
+            Soporta MP3, WAV, MP4, MOV, AVI.<br/>
+            <span className="font-medium text-slate-600">Máximo 2 GB</span>
           </p>
           <div 
             className="px-4 py-2 text-xs font-medium text-white bg-slate-900 rounded-md shadow-md"
