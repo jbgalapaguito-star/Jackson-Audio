@@ -1,7 +1,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = process.env.API_KEY || "";
+if (!apiKey) {
+  console.warn("GEMINI_API_KEY no configurado. El análisis no funcionará.");
+}
+const ai = new GoogleGenAI({ apiKey });
 
 /**
  * Convierte un archivo a Base64 para envío inline (archivos menores a 20MB).
